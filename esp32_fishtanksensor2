@@ -1,0 +1,136 @@
+///////////////////////////////////
+// Fish Tank Temperature Monitor //
+///////////////////////////////////
+
+#include <WiFi.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#include "ThingSpeak.h"
+#include <TM1637Display.h>
+
+// display Module connection pins (Digital Pins)
+#define CLK 18
+#define DIO 5
+unsigned long displayTime = 0;
+unsigned long displayDelay = 5000;
+int displayIndex=0;
+TM1637Display Display = TM1637Display(CLK, DIO);
+
+// GPIO where the DS18B20 is connected to
+// Setup a oneWire instance to communicate with any OneWire devices
+// Pass our oneWire reference to Dallas Temperature sensor 
+// sensors
+const int oneWireBus = 4;     
+OneWire oneWire(oneWireBus);
+DallasTemperature sensors(&oneWire);
+float temperatureC[2];
+int temperatureCint[2];
+int deviceCount = 0;
+
+// wifi
+const char* ssid = "PS83";   // your network SSID (name)
+const char* password = "priv";   // your network password
+WiFiClient  client; 
+
+// thingspeak
+unsigned long myChannelNumber = 2133705;
+const char * myWriteAPIKey = "QUO54A3HS313OI46";
+
+// Timer variables
+unsigned long lastTime = 0;
+unsigned long timerDelay = 30000;
+
+// onboard LED
+#define LED 2
+
+void setup() {
+  // Start the Serial Monitor
+  Serial.begin(115200);
+  
+  // Wifi
+  pinMode(LED, OUTPUT);
+  WiFi.mode(WIFI_STA);  
+  
+  //Display
+  Display.setBrightness(0x0f); // hex 0f is the same as decimal 15
+  uint8_t data[] = { 0x0, 0x0, 0x0, 0x0 }; //all segments off
+  Display.setSegments(data);
+  
+  // Start the DS18B20 sensor
+  sensors.begin();
+  deviceCount = sensors.getDeviceCount();
+  Serial.print(deviceCount, DEC);
+  Serial.println(" thermostat devices via oneWire.");
+  
+  //Thingspeak
+  ThingSpeak.begin(client); 
+  
+}
+
+
+void updateDisplay(int temperature[]) {
+
+    if ((millis() - displayTime) > displayDelay) {
+      Serial.println("updating Display");
+      Display.showNumberDec(temperature[displayIndex++], false, 3, 1); 
+      displayTime = millis();
+    if (displayIndex==2) displayIndex=0;
+  }
+  
+}
+
+
+void loop() {
+
+    if ((millis() - lastTime) > timerDelay) {
+  
+
+      // Connect or reconnect to WiFi
+      if(WiFi.status() != WL_CONNECTED){
+      
+      Serial.print("Attempting to connect");
+      
+    
+      while(WiFi.status() != WL_CONNECTED){
+        WiFi.begin(ssid, password);
+        digitalWrite(LED, HIGH);  
+        delay(2500);    
+        digitalWrite(LED, LOW);
+        delay(2500);
+        Serial.print(".");
+      }
+      Serial.println("\nConnected.");
+      }
+  
+    sensors.requestTemperatures(); 
+    
+    for (int i=0; i<deviceCount; i++) {
+      temperatureC[i] = sensors.getTempCByIndex(i);
+      //temperatureCint[i] = (int) (temperatureC[i] *10.0f);
+      temperatureCint[i] = (int) (temperatureC[i] * 10) ;
+      Serial.print(temperatureC[i]);
+      Serial.println("ºC");
+      ThingSpeak.setField(i+1, temperatureC[i]);
+
+
+    
+    } /// end for
+
+      int x = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);    
+      if(x == 200){
+      Serial.println("Channel update successful.");
+      digitalWrite(LED, HIGH); delay(500); digitalWrite(LED, LOW); delay(500);
+      digitalWrite(LED, HIGH); delay(500); digitalWrite(LED, LOW); delay(500);
+      digitalWrite(LED, HIGH); delay(500); digitalWrite(LED, LOW); 
+      } else{
+      Serial.println("Problem updating channel. HTTP error code " + String(x));
+      digitalWrite(LED, HIGH); delay(1000); digitalWrite(LED, LOW); 
+      }
+      
+    lastTime = millis();
+    
+    }  // end if 
+  
+    updateDisplay(temperatureCint);
+
+} // end loop
