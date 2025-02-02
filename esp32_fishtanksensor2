@@ -28,7 +28,7 @@ int temperatureCint[2];
 int deviceCount = 0;
 
 // wifi
-const char* ssid = "PS83";   // your network SSID (name)
+const char* ssid = "priv";   // your network SSID (name)
 const char* password = "priv";   // your network password
 WiFiClient  client; 
 
@@ -118,13 +118,13 @@ void loop() {
 
       int x = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);    
       if(x == 200){
-      Serial.println("Channel update successful.");
-      digitalWrite(LED, HIGH); delay(500); digitalWrite(LED, LOW); delay(500);
-      digitalWrite(LED, HIGH); delay(500); digitalWrite(LED, LOW); delay(500);
-      digitalWrite(LED, HIGH); delay(500); digitalWrite(LED, LOW); 
-      } else{
-      Serial.println("Problem updating channel. HTTP error code " + String(x));
-      digitalWrite(LED, HIGH); delay(1000); digitalWrite(LED, LOW); 
+        Serial.println("Channel update successful.");
+        digitalWrite(LED, HIGH); delay(2); digitalWrite(LED, LOW); delay(50);
+        digitalWrite(LED, HIGH); delay(2); digitalWrite(LED, LOW); delay(50);
+        digitalWrite(LED, HIGH); delay(2); digitalWrite(LED, LOW); 
+      } else {
+        Serial.println("Problem updating channel. HTTP error code " + String(x));
+        digitalWrite(LED, HIGH); delay(1000); digitalWrite(LED, LOW); 
       }
       
     lastTime = millis();
